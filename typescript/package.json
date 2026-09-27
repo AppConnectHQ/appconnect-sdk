@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AppConnectHQ/appconnect-sdk.git",
+    "url": "git+https://github.com/AppConnectHQ/appconnect-sdk.git",
     "directory": "typescript"
   },
   "homepage": "https://www.appconnecthq.com/sdk",
