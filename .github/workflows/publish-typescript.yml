@@ -3,11 +3,15 @@ name: Publish TypeScript SDK
 # Two-stage release for @appconnecthq/sdk. npm versions are immutable, so:
 #   1. A version bump pushed to main publishes automatically to npm.w3api.dev.
 #   2. After verifying it there, run this workflow manually with
-#      registry=npmjs to promote the same version to npmjs.com (with
-#      provenance). Promotion refuses versions that stage 1 hasn't published.
+#      registry=npmjs to promote the same version to npmjs.com. Promotion
+#      refuses versions that stage 1 hasn't published.
 #
-# Secrets: NPM_TOKEN (publish to npm.w3api.dev), NPMJS_TOKEN (npmjs.com
-# publish). Add required reviewers to the "npmjs" environment to gate stage 2.
+# npm.w3api.dev uses the NPM_TOKEN secret. npmjs.com uses npm Trusted
+# Publishing (GitHub OIDC, provenance generated automatically). No token is
+# stored for it: the @appconnecthq/sdk package lists this repo, this
+# workflow file, and the "npmjs" environment as its trusted publisher.
+# Trusted Publishing needs npm >= 11.5.1 and GitHub-hosted runners. Add
+# required reviewers to the "npmjs" environment to gate stage 2.
 
 on:
   workflow_dispatch:
@@ -129,7 +133,7 @@ jobs:
     environment: ${{ needs.gate.outputs.registry }}
     permissions:
       contents: read
-      id-token: write # npm provenance on npmjs.com
+      id-token: write # npm Trusted Publishing (OIDC) on npmjs.com
     defaults:
       run:
         working-directory: typescript
@@ -142,7 +146,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.14"
+
+      - name: Upgrade npm for Trusted Publishing
+        run: npm install -g npm@^11.5.1 && npm --version
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -159,18 +166,14 @@ jobs:
       - name: Write .npmrc (outside the checkout)
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPMJS_TOKEN: ${{ secrets.NPMJS_TOKEN }}
           REGISTRY: ${{ needs.gate.outputs.registry }}
         run: |
           set -euo pipefail
           # npm.w3api.dev serves reads anonymously, so NPM_TOKEN is only
-          # required to publish there; promotion to npmjs only reads it.
+          # required to publish there. npmjs.com authenticates via OIDC, so
+          # no npmjs token is written.
           if [ "$REGISTRY" = "w3api" ] && [ -z "$NPM_TOKEN" ]; then
             echo "::error::secrets.NPM_TOKEN is not set (needed to publish to npm.w3api.dev)"
-            exit 1
-          fi
-          if [ "$REGISTRY" = "npmjs" ] && [ -z "$NPMJS_TOKEN" ]; then
-            echo "::error::secrets.NPMJS_TOKEN is not set (needed to publish to npmjs.com)"
             exit 1
           fi
           NPMRC_PATH="$RUNNER_TEMP/.npmrc"
@@ -178,16 +181,12 @@ jobs:
             if [ -n "$NPM_TOKEN" ]; then
               echo "//npm.w3api.dev/:_authToken=\${NPM_TOKEN}"
             fi
-            if [ "$REGISTRY" = "npmjs" ]; then
-              echo "//registry.npmjs.org/:_authToken=\${NPMJS_TOKEN}"
-            fi
           } > "$NPMRC_PATH"
           echo "NPMRC_PATH=$NPMRC_PATH" >> "$GITHUB_ENV"
 
       - name: Check registry state
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPMJS_TOKEN: ${{ secrets.NPMJS_TOKEN }}
           REGISTRY: ${{ needs.gate.outputs.registry }}
           PKG_VERSION: ${{ needs.gate.outputs.version }}
           DRY_RUN: ${{ needs.gate.outputs.dry_run }}
@@ -216,14 +215,13 @@ jobs:
       - name: Publish
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPMJS_TOKEN: ${{ secrets.NPMJS_TOKEN }}
           REGISTRY: ${{ needs.gate.outputs.registry }}
           NPM_TAG: ${{ needs.gate.outputs.tag }}
           DRY_RUN: ${{ needs.gate.outputs.dry_run }}
         run: |
           set -euo pipefail
           ARGS=(--registry="$TARGET_REGISTRY" --tag "$NPM_TAG" --access public --userconfig="$NPMRC_PATH")
-          if [ "$REGISTRY" = "npmjs" ]; then ARGS+=(--provenance); fi
+          # On npmjs.com, Trusted Publishing adds provenance automatically.
           if [ "$DRY_RUN" = "true" ]; then ARGS+=(--dry-run); fi
           npm publish "${ARGS[@]}"
 
