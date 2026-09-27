@@ -1,0 +1,10 @@
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+typescript/src/framework/**/*.d.ts
+
+# Environment and OS files
+.env
+.env.*
+.DS_Store

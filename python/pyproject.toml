@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "appconnect"
+version = "0.1.0"
+description = "AppConnect SDK for Python - unified connector platform client with framework adapters"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["appconnect", "mcp", "connectors", "oauth", "sdk"]
+authors = [{ name = "AppConnectHQ" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
+dependencies = [
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0",
+]
+
+# framework/openai.py and framework/anthropic.py need no extra runtime dependency -- like
+# the TS SDK's adapters, they only map AppConnect tool JSON Schema into
+# plain dict/TypedDict shapes, so these extras stay empty and merely reserve
+# stable `pip install appconnect[openai]` / `[anthropic]` API surface.
+# `langchain` needs a real package because framework/langchain.py
+# constructs genuine `StructuredTool` instances via a dynamic Pydantic
+# model built from JSON Schema.
+[project.optional-dependencies]
+openai = []
+anthropic = []
+langchain = ["langchain-core>=0.1.0"]
+all = ["langchain-core>=0.1.0"]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "respx>=0.22.0",
+    "ruff>=0.8.0",
+    "mypy>=1.10.0",
+    # Needed to run tests/test_framework_langchain.py locally/in CI --
+    # deliberately duplicated from the `langchain` extra (rather than
+    # requiring `pip install -e ".[dev,langchain]"`) so `pip install -e
+    # ".[dev]"` alone runs the full test suite, matching this repo's
+    # convention.
+    "langchain-core>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://www.appconnecthq.com/sdk"
+Repository = "https://github.com/W3Mirror/appconnect-sdk"
+Issues = "https://github.com/W3Mirror/appconnect-sdk/issues"
+Documentation = "https://www.appconnecthq.com/.well-known/agent-skills/appconnect-platform-sdk/SKILL.md"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/appconnect"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# Makes `examples/` importable from `tests/` (e.g. `from examples.mock_model
+# import ...`) without an install step -- `examples/` isn't part of the
+# installed `appconnect` package, see examples/__init__.py.
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false

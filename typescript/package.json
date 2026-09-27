@@ -1,0 +1,79 @@
+{
+  "name": "@appconnecthq/sdk",
+  "version": "0.1.0",
+  "description": "Server-side SDK for AppConnectHQ partner apps: create Link sessions, execute unified tools, and verify webhook signatures.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/W3Mirror/appconnect-sdk.git",
+    "directory": "typescript"
+  },
+  "homepage": "https://www.appconnecthq.com/sdk",
+  "keywords": [
+    "appconnect",
+    "appconnecthq",
+    "sdk",
+    "oauth",
+    "mcp",
+    "integrations"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./ai-sdk": {
+      "types": "./dist/ai-sdk.d.ts",
+      "import": "./dist/ai-sdk.js"
+    },
+    "./langchain": {
+      "types": "./dist/langchain.d.ts",
+      "import": "./dist/langchain.js"
+    }
+  },
+  "scripts": {
+    "build": "bun --bun tsdown --config-loader native",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "ai": "^5.0.0 || ^7.0.0",
+    "@langchain/core": "^0.3.0 || ^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    },
+    "@langchain/core": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@langchain/core": "^1.2.3",
+    "@types/node": "^20",
+    "ai": "^7.0.29",
+    "tsdown": "^0.22.14",
+    "typescript": "^5",
+    "vitest": "^3.2.1"
+  },
+  "bugs": {
+    "url": "https://github.com/W3Mirror/appconnect-sdk/issues"
+  }
+}

@@ -1,0 +1,211 @@
+name: Publish Python SDK
+
+# Two-stage release for the `appconnect` package. PyPI versions are
+# immutable, so:
+#   1. A version bump pushed to main publishes automatically to TestPyPI.
+#   2. After verifying it there, run this workflow manually with target=pypi
+#      to publish the same version to PyPI. That refuses versions that
+#      TestPyPI doesn't have yet.
+#
+# Uploads use PyPI Trusted Publishing (GitHub OIDC); no token is stored.
+# Each index lists this repo + this workflow file + the matching
+# environment ("testpypi" / "pypi") as a trusted publisher. Add required
+# reviewers to the "pypi" environment to gate stage 2.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Package index to publish to"
+        required: true
+        default: "testpypi"
+        type: choice
+        options:
+          - testpypi
+          - pypi
+      dry_run:
+        description: "Build and check without uploading"
+        required: false
+        default: true
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - "python/**"
+      - ".github/workflows/publish-python.yml"
+
+concurrency:
+  group: publish-python
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.decide.outputs.should_publish }}
+      version: ${{ steps.decide.outputs.version }}
+      target: ${{ steps.decide.outputs.target }}
+      dry_run: ${{ steps.decide.outputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether to publish
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          read_version() { sed -n 's/^version = "\(.*\)"$/\1/p' | head -n 1; }
+
+          VERSION=$(read_version < python/pyproject.toml)
+          INIT_VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' python/src/appconnect/__init__.py)
+          if [ -z "$VERSION" ] || [ "$VERSION" != "$INIT_VERSION" ]; then
+            echo "::error::pyproject.toml version ($VERSION) must match appconnect.__version__ ($INIT_VERSION)"
+            exit 1
+          fi
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TARGET="$INPUT_TARGET"; DRY_RUN="$INPUT_DRY_RUN"
+            SHOULD_PUBLISH="true"; REASON="manual workflow_dispatch trigger"
+          else
+            PREV_VERSION="__NONE__"
+            if [ -n "${BEFORE_SHA:-}" ] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+              PREV_VERSION=$(git show "$BEFORE_SHA:python/pyproject.toml" 2>/dev/null | read_version || true)
+            fi
+            TARGET="testpypi"; DRY_RUN="false"
+            if [ "$PREV_VERSION" = "__NONE__" ] || [ -z "$PREV_VERSION" ]; then
+              # No comparable previous commit (e.g. the repository's first
+              # push): never auto-publish without an observed version bump.
+              SHOULD_PUBLISH="false"; REASON="no baseline commit to compare; publish manually if needed"
+            elif [ "$PREV_VERSION" = "$VERSION" ]; then
+              SHOULD_PUBLISH="false"; REASON="version unchanged ($VERSION)"
+            else
+              SHOULD_PUBLISH="true"; REASON="version changed (${PREV_VERSION:-none} -> $VERSION)"
+            fi
+          fi
+
+          echo "Decision: should_publish=$SHOULD_PUBLISH version=$VERSION target=$TARGET dry_run=$DRY_RUN ($REASON)"
+          {
+            echo "should_publish=$SHOULD_PUBLISH"
+            echo "version=$VERSION"
+            echo "target=$TARGET"
+            echo "dry_run=$DRY_RUN"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "## Python SDK publish gate"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Version | \`$VERSION\` |"
+            echo "| Target | \`$TARGET\` |"
+            echo "| Dry run | \`$DRY_RUN\` |"
+            echo "| Should publish | \`$SHOULD_PUBLISH\` |"
+            echo "| Reason | $REASON |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    needs: gate
+    if: needs.gate.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.gate.outputs.target }}
+      url: ${{ needs.gate.outputs.target == 'pypi' && 'https://pypi.org/project/appconnect/' || 'https://test.pypi.org/project/appconnect/' }}
+    permissions:
+      contents: read
+      id-token: write # Trusted Publishing: mint a short-lived upload token.
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy src
+
+      - name: Test
+        run: uv run pytest -q
+
+      - name: Build distributions
+        run: |
+          rm -rf dist
+          uv build
+
+      - name: Check distributions
+        run: uvx twine check --strict dist/*
+
+      - name: Check index state
+        env:
+          TARGET: ${{ needs.gate.outputs.target }}
+          PKG_VERSION: ${{ needs.gate.outputs.version }}
+          DRY_RUN: ${{ needs.gate.outputs.dry_run }}
+        run: |
+          set -uo pipefail
+          status() { curl -s -o /dev/null -w "%{http_code}" "$1/appconnect/$PKG_VERSION/json"; }
+          fail_or_warn() {
+            if [ "$DRY_RUN" = "true" ]; then echo "::warning::$1 (continuing: dry run)"; else echo "::error::$1"; exit 1; fi
+          }
+
+          if [ "$TARGET" = "pypi" ]; then
+            JSON_URL="https://pypi.org/pypi"
+            echo "PUBLISH_URL=https://upload.pypi.org/legacy/" >> "$GITHUB_ENV"
+            if [ "$(status https://test.pypi.org/pypi)" != "200" ]; then
+              fail_or_warn "appconnect $PKG_VERSION is not on TestPyPI yet. Publish and verify it there before PyPI."
+            fi
+          else
+            JSON_URL="https://test.pypi.org/pypi"
+            echo "PUBLISH_URL=https://test.pypi.org/legacy/" >> "$GITHUB_ENV"
+          fi
+
+          case "$(status "$JSON_URL")" in
+            200) fail_or_warn "appconnect $PKG_VERSION already exists on $JSON_URL. Bump the version in python/pyproject.toml and appconnect/__init__.py." ;;
+            404) echo "appconnect $PKG_VERSION is not on $JSON_URL yet - continuing" ;;
+            *) echo "::error::Unexpected response from $JSON_URL - refusing to publish blind"; exit 1 ;;
+          esac
+
+      - name: Publish
+        if: needs.gate.outputs.dry_run != 'true'
+        run: uv publish --trusted-publishing always --publish-url "$PUBLISH_URL" dist/*
+
+      - name: Write summary
+        env:
+          PKG_VERSION: ${{ needs.gate.outputs.version }}
+          TARGET: ${{ needs.gate.outputs.target }}
+          DRY_RUN: ${{ needs.gate.outputs.dry_run }}
+        run: |
+          MODE="Published"; [ "$DRY_RUN" = "true" ] && MODE="Dry run (built and checked; nothing was uploaded)"
+          INSTALL="pip install appconnect==$PKG_VERSION"
+          if [ "$TARGET" = "testpypi" ]; then
+            INSTALL="pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ appconnect==$PKG_VERSION"
+          fi
+          {
+            echo "## Python SDK publish"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Package | \`appconnect==$PKG_VERSION\` |"
+            echo "| Index | \`$TARGET\` |"
+            echo "| Mode | $MODE |"
+            echo ""
+            echo '```'
+            echo "$INSTALL"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
