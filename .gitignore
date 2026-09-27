@@ -2,6 +2,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+.turbo/
 typescript/src/framework/**/*.d.ts
 
 # Environment and OS files
