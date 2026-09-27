@@ -1,0 +1,31 @@
+---
+title: Using a coding agent
+description: Let Claude Code, Cursor, or Codex implement the integration in your repository.
+---
+
+# Using a coding agent
+
+AppConnect publishes agent skills: instructions a coding agent can read before
+it changes your code. The Platform skill covers hosted Link, the callback and
+token exchange, and a first tool call, with the security boundaries spelled
+out.
+
+- [Agent skills index](https://www.appconnecthq.com/.well-known/agent-skills/index.json)
+- [Platform SDK skill](https://www.appconnecthq.com/.well-known/agent-skills/appconnect-platform-sdk/SKILL.md)
+
+## Starter prompt
+
+Paste this into the coding agent working in your product's repository:
+
+```text
+Add [service names] integrations to my product using AppConnect Platform mode. Read https://www.appconnecthq.com/.well-known/agent-skills/appconnect-platform-sdk/SKILL.md first.
+
+Identify this repo's framework and backend, implement hosted Link with credentials and token exchange kept on the backend, and handle the callback, connection status, cancellation, and reconnects. Verify one successful read-only provider operation and report any remaining setup steps.
+```
+
+For a mobile app, add: "Follow https://github.com/AppConnectHQ/appconnect-sdk/blob/main/docs/guides/mobile-apps.mdx
+for the return-to-app flow."
+
+The prompt is a starting point. The agent should reuse your product's existing
+authentication, session, deep-link, and secret-storage conventions, and it
+should never put AppConnect credentials in client code.

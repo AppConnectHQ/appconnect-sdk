@@ -1,0 +1,69 @@
+---
+title: Concepts
+description: Projects, toolkits, hosted Link, unified tools, and who is responsible for what.
+---
+
+# Concepts
+
+## Projects
+
+A **project** is the boundary between one of your products and AppConnect. It
+holds the client credentials, registered redirect URIs, enabled toolkits, auth
+configuration, Link branding, and project-level observability.
+
+A project doesn't replace your user database. Your product still decides which
+signed-in user starts a Link session and which user may call the resulting
+tools.
+
+## Toolkits
+
+A **toolkit** is a provider capability added to a project, such as Google
+Calendar or Slack. Adding a toolkit makes the provider available in Link and
+exposes its tools once a user connects an account.
+
+Each toolkit uses either AppConnect-managed provider credentials (the fastest
+start) or your own OAuth app (more control over branding and scopes, more
+setup). Credentials resolve per user first, then per project, then the
+platform default.
+
+## Hosted Link
+
+**Hosted Link** is the connection screen you send your users to. Provider
+consent screens and connection steps stay out of your product, while you
+control when the flow starts and where it returns.
+
+A Link session is short-lived and is not a credential. Your server must
+complete the exchange on its callback before it can call tools. See
+[Hosted Link](/guides/hosted-link).
+
+## Unified tools
+
+After a user connects, your server lists or searches the tools available to
+that user and executes them with the user's access token. Tool ids such as
+`google_calendar_list_events` are stable, but inspect each tool's
+`inputSchema` rather than hard-coding parameters. See [Tools](/guides/tools).
+
+## Responsibilities
+
+| Concern                | Your product                            | AppConnect                                     |
+| ---------------------- | --------------------------------------- | ---------------------------------------------- |
+| End-user identity      | Owns the user id and login              | Receives a stable user id per Link session     |
+| Provider consent       | Starts the hosted Link URL              | Runs the provider connection flow              |
+| Redirect handling      | Owns the callback route                 | Redirects only to registered URIs              |
+| Client credentials     | Stores them server-side                 | Issues them to the project                     |
+| Provider credentials   | Nothing to implement per provider       | Stores them encrypted and refreshes them       |
+| Business authorization | Decides who may use a tool and when     | Enforces project and connection availability   |
+| Tool execution         | Chooses when to call and confirm writes | Normalizes provider operations                 |
+| AppConnect user tokens | Stores them with its secret storage     | Issues and refreshes them                      |
+
+## Security model
+
+- The client ID identifies the project. The client secret authenticates your
+  server and never belongs in a browser or mobile app.
+- Registered redirect URIs limit where Link may return.
+- Never trust a browser-supplied user id, reuse another user's Link token, or
+  treat a successful redirect as proof that a provider is connected.
+- Encrypt stored tokens, and keep secrets, authorization codes, and bearer
+  tokens out of logs and error messages.
+- Route writes, sends, deletes, and permission changes through your own
+  confirmation and authorization rules.

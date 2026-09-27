@@ -1,0 +1,140 @@
+---
+title: Triggers and webhooks
+description: Subscribe to provider events for a connected user and verify signed deliveries.
+---
+
+# Triggers and webhooks
+
+A trigger subscribes to a provider event (such as a new commit or a calendar
+change) for a connected user. AppConnect delivers each event to your callback
+URL as a signed `POST`.
+
+## Discover trigger types
+
+<CodeGroup>
+```ts TypeScript
+const { trigger_definitions } = await client.listTriggerDefinitions(accessToken, "github-oauth");
+```
+
+```python Python
+definitions = await client.list_trigger_definitions(access_token, "github-oauth")
+```
+</CodeGroup>
+
+Each definition includes a `configSchema` describing the config the trigger
+needs. Only services the user has connected are returned.
+
+## Subscribe
+
+<CodeGroup>
+```ts TypeScript
+const { trigger, signing_secret } = await client.subscribeTrigger(accessToken, {
+  service: "github-oauth",
+  trigger: "new_commit",
+  config: { owner: "acme", repo: "api" },
+  callbackUrl: "https://yourapp.com/webhooks/appconnect",
+});
+```
+
+```python Python
+subscription = await client.subscribe_trigger(
+    access_token,
+    service="github-oauth",
+    trigger="new_commit",
+    config={"owner": "acme", "repo": "api"},
+    callback_url="https://yourapp.com/webhooks/appconnect",
+)
+# subscription.trigger, subscription.signing_secret
+```
+</CodeGroup>
+
+<Warning>
+`signing_secret` is returned **only once**. Store it with the trigger id; later
+reads never include it.
+</Warning>
+
+Callback URLs must be public HTTPS endpoints. Private-network and loopback
+addresses are rejected.
+
+## Verify deliveries
+
+Every delivery carries an `X-AppConnect-Signature: t=<unix-seconds>,v1=<hex>`
+header: an HMAC-SHA256 of `"<t>.<raw body>"` with your signing secret. Verify it
+against the **raw** request body before parsing JSON.
+
+<CodeGroup>
+```ts TypeScript
+import { verifyWebhookSignature } from "@appconnecthq/sdk";
+
+export async function POST(request: Request) {
+  const rawBody = await request.text();
+  const valid = verifyWebhookSignature(
+    rawBody,
+    request.headers.get("x-appconnect-signature") ?? "",
+    signingSecret,
+  );
+  if (!valid) return new Response("invalid signature", { status: 401 });
+
+  const event = JSON.parse(rawBody);
+  // ...handle the event
+  return new Response(null, { status: 204 });
+}
+```
+
+```python Python
+from appconnect import verify_webhook_signature
+
+def handle(raw_body: str, headers: dict[str, str]) -> int:
+    if not verify_webhook_signature(
+        raw_body, headers.get("x-appconnect-signature", ""), signing_secret
+    ):
+        return 401
+    ...  # handle json.loads(raw_body)
+    return 204
+```
+</CodeGroup>
+
+Signatures older than five minutes are rejected by default to block replays.
+Pass a different tolerance in seconds as the fourth argument, or `0` to
+disable the check.
+
+## Manage subscriptions
+
+<CodeGroup>
+```ts TypeScript
+const { triggers } = await client.listTriggerInstances(accessToken);
+const { trigger } = await client.getTriggerInstance(accessToken, id);
+
+await client.updateTriggerInstance(accessToken, id, { status: "paused" });
+await client.updateTriggerInstance(accessToken, id, { callbackUrl: newUrl });
+
+await client.unsubscribeTrigger(accessToken, id);
+```
+
+```python Python
+triggers = await client.list_trigger_instances(access_token)
+trigger = await client.get_trigger_instance(access_token, trigger_id)
+
+await client.update_trigger_instance(access_token, trigger_id, status="paused")
+await client.update_trigger_instance(access_token, trigger_id, callback_url=new_url)
+
+await client.unsubscribe_trigger(access_token, trigger_id)
+```
+</CodeGroup>
+
+## Delivery history
+
+Each delivery and every retry attempt is recorded, which helps when debugging
+your endpoint.
+
+<CodeGroup>
+```ts TypeScript
+const page = await client.listDeliveries(accessToken, id, { status: "failed", limit: 20 });
+// page.deliveries, page.nextCursor
+```
+
+```python Python
+page = await client.list_deliveries(access_token, trigger_id, status="failed", limit=20)
+# page.deliveries, page.nextCursor
+```
+</CodeGroup>

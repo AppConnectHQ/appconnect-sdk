@@ -7,9 +7,13 @@ triggers, and verify inbound webhook signatures.
 ## Install
 
 ```bash
-npm config set @appconnecthq:registry https://npm.w3api.dev/
 npm install @appconnecthq/sdk
 ```
+
+## Documentation
+
+Guides and the full API reference live in [`docs/`](../docs/). Release notes are in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ## Usage
 

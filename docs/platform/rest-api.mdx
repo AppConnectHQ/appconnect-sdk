@@ -1,0 +1,28 @@
+---
+title: REST API
+description: The HTTP endpoints behind the SDKs.
+---
+
+# REST API
+
+The SDKs are thin clients over AppConnect's REST API. You can call it directly
+from any language; every endpoint returns
+`{ "success": true, "data": ... }` or `{ "success": false, "error": { "message", "code" } }`.
+
+| Endpoint                                  | SDK method                         | Auth                      |
+| ----------------------------------------- | ---------------------------------- | ------------------------- |
+| `POST /api/link-tokens`                   | `createLinkToken`                  | Client ID + secret (body) |
+| `POST /api/link-tokens/exchange`          | `exchangeLinkToken`                | Client ID + secret (body) |
+| `POST /api/oauth/token`                   | `exchangeAuthorizationCode`, `refreshToken` | Client ID + secret (body) |
+| `GET /api/tools`                          | `listTools`                        | Bearer access token       |
+| `GET /api/tools/search?q=&limit=`         | `searchTools`                      | Bearer access token       |
+| `POST /api/tools/execute`                 | `executeTool`                      | Bearer access token       |
+| `* /api/proxy/{service}/{path}`           | `proxy`                            | Bearer access token       |
+| `GET /api/trigger-definitions?service=`   | `listTriggerDefinitions`           | Bearer access token       |
+| `GET, POST /api/triggers`                 | `listTriggerInstances`, `subscribeTrigger` | Bearer access token |
+| `GET, PATCH, DELETE /api/triggers/{id}`   | `getTriggerInstance`, `updateTriggerInstance`, `unsubscribeTrigger` | Bearer access token |
+| `GET /api/triggers/{id}/deliveries`       | `listDeliveries`                   | Bearer access token       |
+| `/api/mcp`                                | See [MCP](/platform/mcp)           | Bearer access token       |
+
+The machine-readable spec is published at
+[`/openapi.json`](https://www.appconnecthq.com/openapi.json).

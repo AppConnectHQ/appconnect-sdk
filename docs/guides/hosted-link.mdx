@@ -1,0 +1,132 @@
+---
+title: Hosted Link
+description: Let your users connect services, then exchange and refresh their AppConnect tokens.
+---
+
+# Hosted Link
+
+Hosted Link is how your users connect a provider account. Your server creates a
+short-lived session, the user authorizes on the provider's own consent screen,
+and AppConnect redirects back to your registered callback.
+
+## Lifecycle
+
+1. Your product authenticates its own user.
+2. Your server creates a Link session using that user's stable id.
+3. The user authorizes a provider in hosted Link.
+4. AppConnect redirects to your registered callback.
+5. Your server exchanges the Link token.
+6. Your server stores the resulting tokens against the same user.
+7. Later requests list and execute tools with that user's access token.
+
+## Create a session
+
+<CodeGroup>
+```ts TypeScript
+const session = await client.createLinkToken({
+  userId: currentUser.id,
+  redirectUri: "https://yourapp.com/appconnect/callback",
+  allowedServices: ["google-calendar", "slack"], // optional
+  state: csrfToken, // optional, returned on exchange
+  expiresIn: 600, // optional, seconds
+});
+// session.link_url, session.link_token, session.expires_at
+```
+
+```python Python
+session = await client.create_link_token(
+    user_id=current_user.id,
+    redirect_uri="https://yourapp.com/appconnect/callback",
+    allowed_services=["google-calendar", "slack"],  # optional
+    state=csrf_token,  # optional, returned on exchange
+    expires_in=600,  # optional, seconds
+)
+# session.link_url, session.link_token, session.expires_at
+```
+</CodeGroup>
+
+- `redirectUri` must exactly match a URI registered on the project: scheme,
+  host, port, path, and trailing slash. Local, preview, and production
+  callbacks are separate registrations.
+- `allowedServices` narrows Link to specific toolkit slugs. Omit it to offer
+  every toolkit enabled on the project.
+
+Keep `link_token` server-side (for example, in the user's session) so the
+callback can exchange it.
+
+## Exchange on the callback
+
+<CodeGroup>
+```ts TypeScript
+const result = await client.exchangeLinkToken(linkToken);
+
+if (result.status === "pending") {
+  // The user hasn't finished connecting. Show result.message and let them retry.
+} else {
+  // result.status === "connected"
+  await saveTokens(currentUser.id, {
+    accessToken: result.access_token,
+    refreshToken: result.refresh_token,
+    expiresAt: result.expires_at,
+  });
+  // result.connected_services lists the services connected so far.
+}
+```
+
+```python Python
+result = await client.exchange_link_token(link_token)
+
+if result.status == "pending":
+    ...  # The user hasn't finished connecting. Show result.message and let them retry.
+else:
+    await save_tokens(
+        current_user.id,
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+        expires_at=result.expires_at,
+    )
+```
+</CodeGroup>
+
+The response is a union discriminated by `status`. Check that `user_id` matches
+the user who started the session before storing anything.
+
+## Refresh tokens
+
+AppConnect access tokens expire (`expires_at`). Refresh them server-side with
+the stored refresh token:
+
+<CodeGroup>
+```ts TypeScript
+const tokens = await client.refreshToken(storedRefreshToken);
+// tokens.access_token, tokens.refresh_token, tokens.expires_in
+```
+
+```python Python
+tokens = await client.refresh_token(stored_refresh_token)
+```
+</CodeGroup>
+
+Store the new refresh token if one is returned. Provider tokens behind the
+connection are refreshed by AppConnect; you only manage the AppConnect token.
+
+## Reconnects
+
+If a provider revokes access or a connection expires, tool calls fail with an
+`AppConnectError`. Offer the user a reconnect by creating a new Link session
+with `allowedServices` set to the affected service.
+
+## Authorization-code flow
+
+Partners that use the OAuth authorization-code redirect instead of Link can
+exchange the code directly:
+
+<CodeGroup>
+```ts TypeScript
+const tokens = await client.exchangeAuthorizationCode(code, redirectUri);
+```
+
+```python Python
+tokens = await client.exchange_authorization_code(code, redirect_uri)
+```
+</CodeGroup>

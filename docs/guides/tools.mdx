@@ -1,0 +1,97 @@
+---
+title: Tools
+description: List, search, and execute a connected user's tools, or call a provider API directly.
+---
+
+# Tools
+
+Every call takes the connected user's AppConnect access token, so a user only
+ever sees and runs the tools for services they connected.
+
+## List and search
+
+<CodeGroup>
+```ts TypeScript
+const { tools } = await client.listTools(accessToken);
+
+const { tools: matches } = await client.searchTools(accessToken, "send a message", 5);
+```
+
+```python Python
+tools = await client.list_tools(access_token)
+
+matches = await client.search_tools(access_token, "send a message", 5)
+```
+</CodeGroup>
+
+The TypeScript methods return `{ tools }`; the Python methods return the list
+directly. Each tool has:
+
+| Field         | Meaning                                                     |
+| ------------- | ----------------------------------------------------------- |
+| `id`          | Unified id passed to `executeTool`, e.g. `slack_send_message` |
+| `service`     | Service slug, e.g. `slack`                                  |
+| `name`        | Tool name within the service, e.g. `send_message`           |
+| `displayName` | Human-readable name                                         |
+| `description` | What the tool does (may be `null`)                          |
+| `method`      | Underlying HTTP method; `GET` tools are read-only           |
+| `inputSchema` | JSON Schema for the parameters (may be `null`)              |
+
+Use `searchTools` when an agent needs to discover a tool by intent instead of
+receiving every tool up front.
+
+## Execute
+
+<CodeGroup>
+```ts TypeScript
+const { tool, data } = await client.executeTool(accessToken, "slack_send_message", {
+  channel: "#launch",
+  text: "Shipped!",
+});
+```
+
+```python Python
+result = await client.execute_tool(
+    access_token,
+    "slack_send_message",
+    {"channel": "#launch", "text": "Shipped!"},
+)
+# result.tool, result.data
+```
+</CodeGroup>
+
+Validate parameters against the tool's `inputSchema`. Start with a read-only
+(`GET`) tool, and put writes, sends, and deletes behind your own confirmation
+and authorization rules.
+
+## Raw API proxy
+
+When no prebuilt tool covers what you need, `proxy` makes an authenticated
+request to the provider's API with the user's connection:
+
+<CodeGroup>
+```ts TypeScript
+const labels = await client.proxy(accessToken, "google-gmail", "/users/me/labels");
+
+await client.proxy(accessToken, "notion", "/pages", {
+  method: "POST",
+  body: { parent: { database_id: "..." }, properties: {} },
+});
+```
+
+```python Python
+labels = await client.proxy(access_token, "google-gmail", "/users/me/labels")
+
+await client.proxy(
+    access_token,
+    "notion",
+    "/pages",
+    method="POST",
+    body={"parent": {"database_id": "..."}, "properties": {}},
+)
+```
+</CodeGroup>
+
+The path is relative to the service's API base URL (for example,
+`https://gmail.googleapis.com/gmail/v1` for `google-gmail`), and the response is
+the provider's own JSON.

@@ -1,0 +1,54 @@
+---
+title: AppConnect SDKs
+description: Give your code and AI agents authenticated, per-user access to the services your users connect.
+---
+
+# AppConnect SDKs
+
+AppConnect lets your product's users connect services such as Google Calendar,
+Slack, or GitHub, then lets your backend (or your AI agent) call those services
+on each user's behalf. AppConnect runs the provider OAuth flows, refreshes
+tokens, and stores credentials encrypted. Your code works with one consistent
+tools API.
+
+| SDK        | Package                                                      | Install                     |
+| ---------- | ------------------------------------------------------------ | --------------------------- |
+| TypeScript | [`@appconnecthq/sdk`](https://www.npmjs.com/package/@appconnecthq/sdk) | `npm install @appconnecthq/sdk` |
+| Python     | [`appconnect`](https://pypi.org/project/appconnect/)          | `pip install appconnect`    |
+
+Both SDKs are server-side and expose the same surface.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    From partner credentials to your first tool call.
+  </Card>
+  <Card title="Concepts" icon="book" href="/concepts">
+    Projects, toolkits, hosted Link, and unified tools.
+  </Card>
+  <Card title="Guides" icon="map" href="/guides/hosted-link">
+    Link sessions, tools, framework adapters, triggers, and more.
+  </Card>
+  <Card title="API reference" icon="code" href="/reference/typescript/index">
+    Every class, method, and type, generated from source.
+  </Card>
+</CardGroup>
+
+## Private beta
+
+AppConnect is in private beta. Request access through the
+[early-access form](https://www.appconnecthq.com/early-access?from=sdk) with
+your name, email, and a short description of what you're building. Include the
+services you need to connect and whether you're evaluating the SDK, MCP, or
+both. Pricing isn't published yet.
+
+Never include access tokens, client secrets, or other credentials in the form
+or in support requests.
+
+## Before you start
+
+- Check that the services you need are in the
+  [integration catalog](https://www.appconnecthq.com/integrations).
+- Keep credentials and tokens on your server. Never put secrets in browser or
+  mobile code.
+- Treat scopes, limits, and endpoint availability as beta behavior until
+  they're confirmed during onboarding.

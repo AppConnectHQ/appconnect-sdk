@@ -16,6 +16,15 @@ Both SDKs expose the same surface:
 
 > AppConnect is in private beta. [Request access](https://www.appconnecthq.com/early-access?from=sdk) to get partner credentials.
 
+## Documentation
+
+The [`docs/`](docs/) directory holds the developer documentation:
+
+- [Quickstart](docs/quickstart.mdx) and [Concepts](docs/concepts.mdx)
+- Guides: [Hosted Link](docs/guides/hosted-link.mdx), [Tools](docs/guides/tools.mdx), [Framework adapters](docs/guides/framework-adapters.mdx), [Triggers and webhooks](docs/guides/triggers-and-webhooks.mdx), [Errors](docs/guides/errors.mdx), [Mobile apps](docs/guides/mobile-apps.mdx), [Using a coding agent](docs/guides/coding-agents.mdx)
+- API reference, generated from source: [TypeScript](docs/reference/typescript/index.md) and [Python](docs/reference/python/index.md)
+- Changelogs: [TypeScript](typescript/CHANGELOG.md) and [Python](python/CHANGELOG.md)
+
 ## Security
 
 The SDKs are server-side. Keep your client secret, AppConnect access tokens, and provider tokens on your backend; never ship them in a browser or mobile bundle. Report vulnerabilities to support@appconnecthq.com rather than opening a public issue.

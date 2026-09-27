@@ -1,3 +1,10 @@
+/**
+ * The main entry point: `AppConnectClient`, its request and response types,
+ * webhook signature verification, and the dependency-free OpenAI and
+ * Anthropic tool adapters.
+ *
+ * @module sdk
+ */
 export * from "./framework";
 export * from "./webhook-signature";
 

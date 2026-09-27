@@ -12,6 +12,11 @@ pip install appconnect
 uv pip install -e python
 ```
 
+## Documentation
+
+Guides and the full API reference live in [`docs/`](https://github.com/AppConnectHQ/appconnect-sdk/tree/main/docs).
+Release notes are in [`CHANGELOG.md`](https://github.com/AppConnectHQ/appconnect-sdk/blob/main/python/CHANGELOG.md).
+
 ## Usage
 
 ```python

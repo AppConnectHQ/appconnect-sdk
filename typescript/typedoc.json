@@ -1,0 +1,38 @@
+{
+  "$schema": "https://typedoc-plugin-markdown.org/schema.json",
+  "name": "@appconnecthq/sdk",
+  "entryPoints": [
+    "src/index.ts",
+    "src/ai-sdk.ts",
+    "src/langchain.ts"
+  ],
+  "plugin": [
+    "typedoc-plugin-markdown"
+  ],
+  "out": "../docs/reference/typescript",
+  "cleanOutputDir": true,
+  "readme": "none",
+  "outputFileStrategy": "modules",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeNotDocumented": false,
+  "hidePageHeader": true,
+  "hideBreadcrumbs": true,
+  "useCodeBlocks": true,
+  "parametersFormat": "table",
+  "interfacePropertiesFormat": "table",
+  "classPropertiesFormat": "table",
+  "typeDeclarationFormat": "table",
+  "enumMembersFormat": "table",
+  "sanitizeComments": true,
+  "disableSources": true,
+  "intentionallyNotExported": [
+    "AppConnectZodSchema"
+  ],
+  "flattenOutputFiles": true,
+  "entryFileName": "index",
+  "pageTitleTemplates": {
+    "index": "@appconnecthq/sdk API reference",
+    "module": "@appconnecthq/{name}"
+  }
+}

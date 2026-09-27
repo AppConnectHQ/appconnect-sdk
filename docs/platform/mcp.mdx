@@ -1,0 +1,32 @@
+---
+title: MCP
+description: Give AI clients that can't run your code access to connected services over MCP.
+---
+
+# MCP
+
+Use the SDK when you control the code. Use the **MCP endpoint** to give
+connected services to AI clients, such as Claude, ChatGPT, or Cursor, that
+speak the Model Context Protocol but can't run your code.
+
+```json
+{
+  "mcpServers": {
+    "appconnect": {
+      "type": "http",
+      "url": "https://www.appconnecthq.com/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <ACCESS_TOKEN>"
+      }
+    }
+  }
+}
+```
+
+The MCP endpoint exposes the same tools as the SDK for the user the token
+belongs to. MCP access is available to beta users with the required workspace
+configuration; if onboarding gave you a different API origin, use it in place
+of `https://www.appconnecthq.com`.
+
+Keep the access token private, and rotate it according to your onboarding
+guidance.

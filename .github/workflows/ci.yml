@@ -33,6 +33,12 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Check generated API reference is current
+        run: |
+          bun run docs:api
+          test -z "$(git status --porcelain -- ../docs/reference/typescript)" \
+            || { git status --short -- ../docs/reference/typescript; echo "::error::docs/reference/typescript is stale. Run 'bun run docs:api' in typescript/ and commit."; exit 1; }
+
   python:
     runs-on: ubuntu-latest
     strategy:
@@ -65,3 +71,10 @@ jobs:
         run: |
           uv build
           uvx twine check --strict dist/*
+
+      - name: Check generated API reference is current
+        if: matrix.python-version == '3.13'
+        run: |
+          uv run python scripts/generate_api_reference.py
+          test -z "$(git status --porcelain -- ../docs/reference/python)" \
+            || { git status --short -- ../docs/reference/python; echo "::error::docs/reference/python is stale. Run 'uv run --python 3.13 python scripts/generate_api_reference.py' in python/ and commit."; exit 1; }

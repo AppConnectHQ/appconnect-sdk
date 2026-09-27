@@ -1,0 +1,138 @@
+---
+title: Framework adapters
+description: Turn a user's AppConnect tools into OpenAI, Anthropic, Vercel AI SDK, or LangChain tools.
+---
+
+# Framework adapters
+
+Each adapter does two things: convert a user's tools into the shape your
+framework expects, and execute whatever tool call the model returns. Every
+adapter takes the same inputs: the client, the user's access token, and
+optionally a pre-fetched tool list (to skip a `listTools` round trip).
+
+| Framework     | TypeScript                                | Python                           | Extra dependency                      |
+| ------------- | ----------------------------------------- | -------------------------------- | ------------------------------------- |
+| OpenAI        | `@appconnecthq/sdk`                       | `appconnect.framework.openai`    | None                                  |
+| Anthropic     | `@appconnecthq/sdk`                       | `appconnect.framework.anthropic` | None                                  |
+| Vercel AI SDK | `@appconnecthq/sdk/ai-sdk`                | Not available                    | `ai` (peer dependency)                |
+| LangChain     | `@appconnecthq/sdk/langchain`             | `appconnect.framework.langchain` | `@langchain/core` / `appconnect[langchain]` |
+
+The adapters never import the model provider's SDK; you call the model with
+your own client.
+
+## OpenAI
+
+<CodeGroup>
+```ts TypeScript
+import { toOpenAITools, executeOpenAIToolCall } from "@appconnecthq/sdk";
+
+const tools = await toOpenAITools({ client, accessToken });
+const reply = await openai.chat.completions.create({ model: "gpt-4o-mini", messages, tools });
+
+messages.push(reply.choices[0].message);
+for (const call of reply.choices[0].message.tool_calls ?? []) {
+  messages.push(await executeOpenAIToolCall({ client, accessToken }, call));
+}
+```
+
+```python Python
+from appconnect.framework.openai import execute_openai_tool_call, to_openai_tools
+
+tools = await to_openai_tools(client, access_token)
+reply = openai_client.chat.completions.create(model="gpt-4o-mini", messages=messages, tools=tools)
+
+messages.append(reply.choices[0].message)
+for call in reply.choices[0].message.tool_calls or []:
+    messages.append(await execute_openai_tool_call(client, access_token, call))
+```
+</CodeGroup>
+
+## Anthropic
+
+<CodeGroup>
+```ts TypeScript
+import { toAnthropicTools, executeAnthropicToolUse } from "@appconnecthq/sdk";
+
+const tools = await toAnthropicTools({ client, accessToken });
+const reply = await anthropic.messages.create({
+  model: "claude-sonnet-5",
+  max_tokens: 1024,
+  messages,
+  tools,
+});
+
+const results = [];
+for (const block of reply.content) {
+  if (block.type === "tool_use") {
+    results.push(await executeAnthropicToolUse({ client, accessToken }, block));
+  }
+}
+messages.push({ role: "assistant", content: reply.content }, { role: "user", content: results });
+```
+
+```python Python
+from appconnect.framework.anthropic import execute_anthropic_tool_use, to_anthropic_tools
+
+tools = await to_anthropic_tools(client, access_token)
+reply = await anthropic_client.messages.create(
+    model="claude-sonnet-5", max_tokens=1024, messages=messages, tools=tools
+)
+
+results = [
+    await execute_anthropic_tool_use(client, access_token, block.model_dump())
+    for block in reply.content
+    if block.type == "tool_use"
+]
+messages += [
+    {"role": "assistant", "content": reply.content},
+    {"role": "user", "content": results},
+]
+```
+</CodeGroup>
+
+## Vercel AI SDK (TypeScript)
+
+The AI SDK tools execute themselves, so there is no separate execute step.
+
+```ts
+import { generateText, stepCountIs } from "ai";
+import { toAISDKTools } from "@appconnecthq/sdk/ai-sdk";
+
+const { text } = await generateText({
+  model,
+  tools: await toAISDKTools({ client, accessToken }),
+  stopWhen: stepCountIs(5),
+  prompt: "What's on my calendar tomorrow?",
+});
+```
+
+## LangChain
+
+LangChain tools are `StructuredTool` instances that execute through AppConnect.
+
+<CodeGroup>
+```ts TypeScript
+import { toLangChainTools } from "@appconnecthq/sdk/langchain";
+
+const tools = await toLangChainTools({ client, accessToken });
+const reply = await chatModel.bindTools(tools).invoke("What's on my calendar tomorrow?");
+```
+
+```python Python
+# pip install "appconnect[langchain]"
+from appconnect.framework.langchain import to_langchain_tools
+
+tools = await to_langchain_tools(client, access_token)
+reply = await chat_model.bind_tools(tools).ainvoke("What's on my calendar tomorrow?")
+```
+</CodeGroup>
+
+## Keeping tool lists small
+
+Models choose better from fewer tools. Pass a filtered list instead of the
+whole catalog, for example the results of `searchTools` or only one service:
+
+```ts
+const { tools } = await client.searchTools(accessToken, "calendar", 10);
+const openAITools = await toOpenAITools({ client, accessToken, tools });
+```

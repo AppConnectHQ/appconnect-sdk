@@ -1,0 +1,56 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "AppConnect",
+  "theme": "mint",
+  "colors": {
+    "primary": "#3d5afe",
+    "light": "#f7faff",
+    "dark": "#0a1430"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": ["index", "quickstart", "concepts"]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/hosted-link",
+          "guides/tools",
+          "guides/framework-adapters",
+          "guides/triggers-and-webhooks",
+          "guides/errors",
+          "guides/mobile-apps",
+          "guides/coding-agents"
+        ]
+      },
+      {
+        "group": "Platform",
+        "pages": ["platform/integrations", "platform/mcp", "platform/rest-api"]
+      },
+      {
+        "group": "TypeScript reference",
+        "pages": [
+          "reference/typescript/index",
+          "reference/typescript/sdk",
+          "reference/typescript/sdk.ai-sdk",
+          "reference/typescript/sdk.langchain"
+        ]
+      },
+      {
+        "group": "Python reference",
+        "pages": [
+          "reference/python/index",
+          "reference/python/clients",
+          "reference/python/types",
+          "reference/python/framework"
+        ]
+      },
+      {
+        "group": "Releases",
+        "pages": ["changelog"]
+      }
+    ]
+  }
+}

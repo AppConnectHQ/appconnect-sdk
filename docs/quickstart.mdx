@@ -1,0 +1,144 @@
+---
+title: Quickstart
+description: Go from partner credentials to your first tool call for a connected user.
+---
+
+# Quickstart
+
+This walks through the smallest complete integration: create a hosted Link
+session for one of your users, exchange it when they return, and run one
+read-only tool as that user.
+
+## 1. Set up a Platform project
+
+Sign in to AppConnect, choose **Platform**, and create a project named after
+your product. On the project's **Getting Started** page:
+
+1. Copy the **Client ID** and **Client Secret** into your server environment.
+2. Register your callback URL (for example
+   `https://yourapp.com/appconnect/callback`) in the project settings.
+3. Add the toolkits your users will connect, such as Google Calendar.
+
+```bash
+APPCONNECT_CLIENT_ID=apc_...
+APPCONNECT_CLIENT_SECRET=...
+APPCONNECT_REDIRECT_URI=https://yourapp.com/appconnect/callback
+```
+
+The client secret authenticates your server. Keep it out of browser bundles,
+mobile apps, and logs.
+
+## 2. Install and initialize
+
+<CodeGroup>
+```bash TypeScript
+npm install @appconnecthq/sdk
+```
+
+```bash Python
+pip install appconnect
+```
+</CodeGroup>
+
+<CodeGroup>
+```ts TypeScript
+import { AppConnectClient } from "@appconnecthq/sdk";
+
+const client = new AppConnectClient({
+  clientId: process.env.APPCONNECT_CLIENT_ID!,
+  clientSecret: process.env.APPCONNECT_CLIENT_SECRET!,
+});
+```
+
+```python Python
+import os
+from appconnect import AppConnectClient
+
+client = AppConnectClient(
+    base_url="https://www.appconnecthq.com",
+    client_id=os.environ["APPCONNECT_CLIENT_ID"],
+    client_secret=os.environ["APPCONNECT_CLIENT_SECRET"],
+)
+```
+</CodeGroup>
+
+The TypeScript client defaults to `https://www.appconnecthq.com`. The Python
+client needs `base_url` (or `APPCONNECT_BASE_URL`). If onboarding gave you a
+different API origin, pass it as `baseUrl` / `base_url`.
+
+## 3. Send your user through hosted Link
+
+Create a Link session for the signed-in user and redirect them to `link_url`.
+
+<CodeGroup>
+```ts TypeScript
+const session = await client.createLinkToken({
+  userId: currentUser.id,
+  redirectUri: process.env.APPCONNECT_REDIRECT_URI!,
+  allowedServices: ["google-calendar"],
+});
+// Redirect the browser to session.link_url.
+```
+
+```python Python
+session = await client.create_link_token(
+    user_id=current_user.id,
+    redirect_uri=os.environ["APPCONNECT_REDIRECT_URI"],
+    allowed_services=["google-calendar"],
+)
+# Redirect the browser to session.link_url.
+```
+</CodeGroup>
+
+## 4. Exchange the session on your callback
+
+When AppConnect redirects back to your callback, exchange the Link token and
+store the tokens against the same user.
+
+<CodeGroup>
+```ts TypeScript
+const result = await client.exchangeLinkToken(session.link_token);
+if (result.status === "connected") {
+  await saveTokens(result.user_id, result.access_token, result.refresh_token);
+}
+```
+
+```python Python
+result = await client.exchange_link_token(session.link_token)
+if result.status == "connected":
+    await save_tokens(result.user_id, result.access_token, result.refresh_token)
+```
+</CodeGroup>
+
+## 5. Run a read-only tool
+
+<CodeGroup>
+```ts TypeScript
+const { tools } = await client.searchTools(accessToken, "upcoming events", 5);
+
+const { data } = await client.executeTool(accessToken, "google_calendar_list_events", {
+  calendarId: "primary",
+  maxResults: 10,
+});
+```
+
+```python Python
+tools = await client.search_tools(access_token, "upcoming events", 5)
+
+result = await client.execute_tool(
+    access_token,
+    "google_calendar_list_events",
+    {"calendarId": "primary", "maxResults": 10},
+)
+```
+</CodeGroup>
+
+Your integration works when a real test user can complete Link, your callback
+stores their tokens, `listTools` returns tools, and one read-only tool succeeds.
+
+## Next steps
+
+- [Hosted Link](/guides/hosted-link): callbacks, reconnects, and token refresh.
+- [Tools](/guides/tools): discovery, input schemas, and the raw API proxy.
+- [Framework adapters](/guides/framework-adapters): hand the user's tools to
+  OpenAI, Anthropic, the Vercel AI SDK, or LangChain.

@@ -1,0 +1,61 @@
+---
+title: Errors
+description: How the SDKs report API errors, and how to handle them.
+---
+
+# Errors
+
+Both SDKs raise a single error type, `AppConnectError`, when the API returns an
+HTTP error or a `{ "success": false }` payload.
+
+| Property  | Meaning                                                          |
+| --------- | ---------------------------------------------------------------- |
+| `message` | Human-readable description from the API                          |
+| `status`  | HTTP status code (Python uses `0` for network failures)          |
+| `code`    | Machine-readable error code from the API, when one is provided  |
+
+<CodeGroup>
+```ts TypeScript
+import { AppConnectError } from "@appconnecthq/sdk";
+
+try {
+  await client.executeTool(accessToken, toolId, params);
+} catch (error) {
+  if (error instanceof AppConnectError) {
+    console.error(error.status, error.code, error.message);
+  } else {
+    throw error; // network failure or a bug
+  }
+}
+```
+
+```python Python
+from appconnect import AppConnectError
+
+try:
+    await client.execute_tool(access_token, tool_id, params)
+except AppConnectError as error:
+    print(error.status, error.code, error)
+```
+</CodeGroup>
+
+## Network failures
+
+- **TypeScript**: a network failure surfaces as the underlying `fetch` error,
+  not as `AppConnectError`.
+- **Python**: network failures are wrapped in `AppConnectError` with
+  `status == 0` and `code == "network_error"`. A missing `base_url`, `client_id`, or `client_secret` raises
+  `AppConnectError` with `code == "config_error"` when the client is created.
+
+## Common statuses
+
+| Status | Usually means                                                  | What to do                                         |
+| ------ | -------------------------------------------------------------- | -------------------------------------------------- |
+| 401    | The access token expired or was revoked                        | Refresh it; if that fails, send the user to Link   |
+| 403    | The user or project may not use this tool or service           | Check the project's toolkits and the user's grants |
+| 404    | Unknown tool, trigger, or service slug                         | Re-list tools; ids come from `listTools`           |
+| 4xx    | Invalid parameters for the tool                                | Validate against the tool's `inputSchema`          |
+| 5xx    | AppConnect or the provider failed                              | Retry with backoff                                 |
+
+Error messages never contain secrets, but don't log request bodies or bearer
+tokens alongside them.

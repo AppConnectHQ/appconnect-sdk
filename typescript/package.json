@@ -26,6 +26,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "main": "./dist/index.js",
@@ -49,7 +50,8 @@
     "build": "bun --bun tsdown --config-loader native",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docs:api": "typedoc"
   },
   "dependencies": {
     "zod": "^4.4.3"
@@ -71,6 +73,8 @@
     "@types/node": "^20",
     "ai": "^7.0.29",
     "tsdown": "^0.22.14",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.13.1",
     "typescript": "^5",
     "vitest": "^3.2.1"
   },

@@ -1,0 +1,40 @@
+---
+title: Mobile apps
+description: Connect services for users of an iOS, Android, React Native, Expo, or Flutter app.
+---
+
+# Mobile apps
+
+There is no native mobile SDK. A mobile app uses AppConnect through **your
+backend**, which runs the server-side SDK. The client secret, AppConnect
+tokens, and provider tokens never ship in the app bundle.
+
+## Flow
+
+1. The app asks your backend to start a connection for the signed-in user.
+2. Your backend calls `createLinkToken` with an **HTTPS** callback on your
+   backend and returns `link_url` to the app.
+3. The app opens `link_url` in the platform authentication session
+   (`ASWebAuthenticationSession` on iOS, Custom Tabs on Android, or your
+   framework's equivalent), not in an embedded web view.
+4. AppConnect redirects to your backend callback, which exchanges the Link
+   token and stores the tokens against the user.
+5. The callback redirects to your app through a universal link, app link, or an
+   allowlisted custom scheme, so the authentication session closes.
+6. The app asks your backend for connection status and runs tool operations
+   through backend endpoints.
+
+## Things to handle
+
+- **Cancellation**: the user may close the authentication session. Treat it as
+  "not connected" and let them retry.
+- **Return to app**: the callback should always redirect back to the app, even
+  when the exchange fails, with a status the app can display.
+- **Reconnects**: when a tool call reports expired or revoked access, start a
+  new Link session for that service.
+- **Connection status**: expose a backend endpoint that reports which services
+  the user has connected; don't infer it from a redirect.
+
+Keep your backend's existing authentication, session, deep-link, and
+secret-storage conventions. AppConnect credentials must never appear in the
+mobile bundle or in app logs.
