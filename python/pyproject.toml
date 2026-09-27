@@ -56,8 +56,8 @@ dev = [
 
 [project.urls]
 Homepage = "https://www.appconnecthq.com/sdk"
-Repository = "https://github.com/W3Mirror/appconnect-sdk"
-Issues = "https://github.com/W3Mirror/appconnect-sdk/issues"
+Repository = "https://github.com/AppConnectHQ/appconnect-sdk"
+Issues = "https://github.com/AppConnectHQ/appconnect-sdk/issues"
 Documentation = "https://www.appconnecthq.com/.well-known/agent-skills/appconnect-platform-sdk/SKILL.md"
 
 [tool.hatch.build.targets.sdist]
