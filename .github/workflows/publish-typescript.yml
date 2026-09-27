@@ -6,7 +6,7 @@ name: Publish TypeScript SDK
 #      registry=npmjs to promote the same version to npmjs.com (with
 #      provenance). Promotion refuses versions that stage 1 hasn't published.
 #
-# Secrets: NPM_TOKEN (npm.w3api.dev publish/read), NPMJS_TOKEN (npmjs.com
+# Secrets: NPM_TOKEN (publish to npm.w3api.dev), NPMJS_TOKEN (npmjs.com
 # publish). Add required reviewers to the "npmjs" environment to gate stage 2.
 
 on:
@@ -163,8 +163,10 @@ jobs:
           REGISTRY: ${{ needs.gate.outputs.registry }}
         run: |
           set -euo pipefail
-          if [ -z "$NPM_TOKEN" ]; then
-            echo "::error::secrets.NPM_TOKEN is not set (needed to publish to or verify against npm.w3api.dev)"
+          # npm.w3api.dev serves reads anonymously, so NPM_TOKEN is only
+          # required to publish there; promotion to npmjs only reads it.
+          if [ "$REGISTRY" = "w3api" ] && [ -z "$NPM_TOKEN" ]; then
+            echo "::error::secrets.NPM_TOKEN is not set (needed to publish to npm.w3api.dev)"
             exit 1
           fi
           if [ "$REGISTRY" = "npmjs" ] && [ -z "$NPMJS_TOKEN" ]; then
@@ -173,7 +175,9 @@ jobs:
           fi
           NPMRC_PATH="$RUNNER_TEMP/.npmrc"
           {
-            echo "//npm.w3api.dev/:_authToken=\${NPM_TOKEN}"
+            if [ -n "$NPM_TOKEN" ]; then
+              echo "//npm.w3api.dev/:_authToken=\${NPM_TOKEN}"
+            fi
             if [ "$REGISTRY" = "npmjs" ]; then
               echo "//registry.npmjs.org/:_authToken=\${NPMJS_TOKEN}"
             fi
